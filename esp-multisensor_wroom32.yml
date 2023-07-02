@@ -33,14 +33,23 @@ captive_portal:
 web_server:
   port: 80
 
+# NodeMCU V2 UART Pins
+# GPIO1 (TX) - TX0
+# GPIO3 (RX) - RX0
+# GPIO2 (D4) - TX1
+# GPIO4 (D2) - RX
+# GPIO13 (D7) - RX2
+# GPIO15 (D8) - TX2
+# Pins GPIO16 and GPIO17 cannot be used as RX pins on ESP8266.
+
 # Wroom32 ESP UART Pins
-# GPIO1 (TXD) - U0TXD
-# GPIO3 (RXD) - U0RXD
+# GPIO1 (TXD) - U0TXD (Cannot be used)
+# GPIO3 (RXD) - U0RXD (Cannot be used)
 # GPIO10 (SD3) - U1TXD
 # GPIO9 (SD2) - U1RXD
-# GPIO17 (G17) - U2TXD (Not working somehow)
-# GPIO16 (G16) - U2RXD (Not working somehow)
-
+# GPIO17 (G17) - U2TXD
+# GPIO16 (G16) - U2RXD
+# Pin 10 (9-10) might already be used by the flash interface in QUAD IO flash mode.
 uart:
   - id: uart_sds011
     rx_pin: GPIO3
@@ -50,6 +59,10 @@ uart:
     rx_pin: GPIO17
     tx_pin: GPIO16
     baud_rate: 9600
+#  - id: uart_
+#    rx_pin: GPIO13
+#    tx_pin: GPIO15
+#    baud_rate: 9600
 
 # SDS011 Particle Sensor
 sensor:
@@ -59,16 +72,17 @@ sensor:
       name: "Particulate Matter <2.5µm Concentration"
     pm_10_0:
       name: "Particulate Matter <10.0µm Concentration"
-    update_interval: 0min
+    update_interval: 1min
 
 # MH-Z19B CO2 and Temperature sensor
   - platform: mhz19
     uart_id: uart_mh_z19b
     co2:
-      name: "MH-Z19 CO2 Value"
+      name: "CO2 Value"
+      id: co2_sensor
     temperature:
-      name: "MH-Z19 Temperature"
-    update_interval: 0s
+      name: "Temperature"
+    update_interval: 15s
     automatic_baseline_calibration: false
 
 # DHT22 Humidity and Temperature sensor
@@ -76,7 +90,40 @@ sensor:
     pin: GPIO27
     model: DHT22
     temperature:
-      name: "Living Room Temperature"
+      name: "Temperature"
     humidity:
-      name: "Living Room Humidity"
-    update_interval: 0s
+      name: "Humidity"
+    update_interval: 15s
+
+# Define the template text sensor to display the status
+text_sensor:
+  - platform: template
+    name: "CO2 Status"
+    id: co2_status
+    lambda: |-
+      if (id(co2_sensor).state > 5000) {
+        return {"Gevaarlijk bij langdurige blootstelling"};
+      } else if (id(co2_sensor).state > 4000) {
+        return {"Negatieve gezondheidseffecten"};
+      } else if (id(co2_sensor).state > 1200) {
+        return {"Ventileren noodzakelijk"};
+      } else if (id(co2_sensor).state > 1000) {
+        return {"Ventileren gewenst"};
+      } else if (id(co2_sensor).state > 800) {
+        return {"Acceptabel niveau"};
+      } else if (id(co2_sensor).state > 600) {
+        return {"Gezond binnenklimaat"};
+      } else if (id(co2_sensor).state > 350) {
+        return {"Gezond buitenlucht niveau"};
+      } else {
+        return {"CO2 niveau onbekend"};
+      }
+
+# 5000  Gevaarlijk bij langdurige blootstelling
+# 4000 Negatieve gezondheidseffecten
+# 1200 Ventileren noodzakelijk
+# 1000 Ventileren gewenst
+# 800 Acceptabel niveau
+# 600 Gezond binnenklimaat
+# 350 Gezond buitenlucht niveau
+
